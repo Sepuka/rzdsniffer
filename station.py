@@ -51,8 +51,12 @@ class StationSelector(object, Resource):
             self._output('expected station parameter', request)
             return server.NOT_DONE_YET
         else:
-            rzdparser.getStations(station)
-        return '%s : %s : %s' % (type(request), dir(request), request.args);
+            stations = rzdparser.getStations(station)
+            if (stations == None):
+                self._output('Ошибка получения данных', request)
+            else:
+                self._output(stations, request)
+        return server.NOT_DONE_YET
 
 resource = Resource()
 resource.putChild('station', StationSelector())
