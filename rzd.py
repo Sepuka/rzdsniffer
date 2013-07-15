@@ -8,14 +8,18 @@ __date__ ="$12.07.2013 13:41:37$"
 
 import sys
 import httplib
+import json
 from logger import Logger
+import useragent
 from twisted.web import client as twc
 
 class RZD(object):
 
-    _log    = None
+    _log            = None
 
-    addr = 'http://rzd.ru'
+    addr            = 'http://rzd.ru'
+    # Количество станций выдаваемых клиенту
+    stationsPacket  = 10
 
     def __init__(self):
         self._log = Logger()
@@ -38,13 +42,15 @@ class RZD(object):
 
     def getStations(self, stationName):
         u"""Получение списка станций соответствующих имени
+        Возвращает список из self.stationsPacket станций
         """
         self._log.debug('Поиск станции "%s"', stationName)
         scheme, host, port, path = twc._parse(self.addr)
         req = '/suggester?stationNamePart=%s&lang=ru&lat=0&compactMode=y' % stationName
+        result = None
         try:
             conn = httplib.HTTPConnection(host)
-            headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/28.0.1500.71 Safari/537.36',
+            headers = {'User-Agent': useragent.getRandomUserAgent(),
                 'Accept': '*/*', 'X-Requested-With': 'XMLHttpRequest'}
             self._log.debug('Отправка запроса на %s', req)
             conn.request('GET', req, None, headers)
@@ -53,14 +59,21 @@ class RZD(object):
             error = '%s:\ntrace:\n%s' % (ex, '\n'.join(format_list(extract_tb(sys.exc_info()[2]))))
             self._log.critical('Failed station retrieve: %s',
                 error)
-            return None
         else:
             response = conn.getresponse()
             if (response.status != httplib.CREATED):
                 self._log.error('Failed station retrieve "%s": answer code %s',
                     stationName, response.status)
-                return None
-            return response.read()
+            else:
+                answer = response.read()
+                try:
+                    stations = json.loads(answer, 'utf-8')
+                except Exception, ex:
+                    self._log.error('Failed to decode JSON answer: %s', ex)
+                else:
+                    # Сортируем словарь по полю L
+                    result = sorted(stations, key=lambda k:k['L'], reverse=True)[:self.stationsPacket]
         finally:
             if (isinstance(conn, httplib.HTTPConnection)):
                 conn.close()
+            return result
