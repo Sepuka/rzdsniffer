@@ -12,6 +12,7 @@ from twisted.internet import reactor
 from ConfigParser import ConfigParser
 from logger import Logger
 import rzd
+from functools import partial
 
 config = ConfigParser()
 config.read('./config.ini')
@@ -19,6 +20,26 @@ config.read('./config.ini')
 class StationSelector(object, Resource):
 
     _log    = None
+    _rzd    = None
+    # Словарь имен вызванных логов для partial
+    _logNamesPart   = {}
+
+    def __init__(self):
+        self._log = Logger()
+        self._rzd = rzd.RZD()
+
+    def __getattr__(self, name):
+        try:
+            return self._logNamesPart[name]
+        except KeyError:
+            obj = getattr(self._log, name)
+            if obj is not None:
+                part = partial(obj, moduleName=self.__class__.__name__)
+                self._logNamesPart[name] = part
+                return part
+            else:
+                self._log.error('Попытка вызова несуществующего типа лога "%s"',
+                    name, moduleName=self.__class__.__name__)
 
     def _output(self, response, request):
         u"""
@@ -32,7 +53,7 @@ class StationSelector(object, Resource):
         request.setHeader('Content-Type', 'text/plain;charset=utf-8')
         if not isinstance(response, basestring):
             response = '%s' % response
-        self._log.debug(response)
+        self.debug(response)
         request.write(response)
         request.finish()
 
@@ -41,9 +62,7 @@ class StationSelector(object, Resource):
         @param request: Запрос клиента
         @type request: twisted.http.request
         """
-        self._log = Logger()
-        rzdparser = rzd.RZD()
-        self._log.info(u'Запрошен ресурс %s с IP %s', self.__class__.__name__, request.getClientIP())
+        self.info('Запрошен ресурс %s с IP %s', self.__class__.__name__, request.getClientIP())
         try:
             station = request.args['station'][0]
         except KeyError:
@@ -51,7 +70,7 @@ class StationSelector(object, Resource):
             self._output('expected station parameter', request)
             return server.NOT_DONE_YET
         else:
-            stations = rzdparser.getStations(station)
+            stations = self._rzd.getStations(station)
             if (stations == None):
                 self._output('Ошибка получения данных', request)
             else:
@@ -59,6 +78,11 @@ class StationSelector(object, Resource):
         return server.NOT_DONE_YET
 
 resource = Resource()
-resource.putChild('station', StationSelector())
-reactor.listenTCP(config.getint('webserver', 'port'), server.Site(resource))
-reactor.run()
+try:
+    # Любой ресурс может не завестись
+    resource.putChild('station', StationSelector())
+except Exception, ex:
+    print ex
+else:
+    reactor.listenTCP(config.getint('webserver', 'port'), server.Site(resource))
+    reactor.run()

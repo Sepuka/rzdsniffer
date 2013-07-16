@@ -70,12 +70,12 @@ class Logger(object):
         LOG_WHEN = 'midnight'
 
         self.__handler = logging.handlers.TimedRotatingFileHandler(LOG_FILE, when=LOG_WHEN)
-        self.__handler.setFormatter(logging.Formatter('%(asctime)-15s %(levelname)-8s %(message)s'))
+        self.__handler.setFormatter(logging.Formatter('%(asctime)-15s %(levelname)-8s [%(moduleName)-10s] %(message)s'))
         self.__handler.setLevel(logging.DEBUG)
         error_handler = logging.handlers.SMTPHandler(self.__conf.get('log', 'smtp'),
             'rzdparser@xn--h1afdfc2d.xn--p1ai', self.__conf.get('log', 'adminMail'),
             'RZDParser')
-        error_handler.setFormatter(logging.Formatter('%(asctime)-15s %(levelname)-8s %(message)s'))
+        error_handler.setFormatter(logging.Formatter('%(asctime)-15s %(levelname)-8s [%(moduleName)-10s] %(message)s'))
         error_handler.setLevel(self.__conf.getint('log', 'mailLevel'))
 
         self.__log = logging.getLogger('rzdparser')
@@ -96,9 +96,13 @@ class Logger(object):
             exc_info = False
         else:
             exc_info = sys.exc_info()
+        try:
+            extraParams = {'moduleName': kw['moduleName']}
+        except KeyError:
+            extraParams = {'moduleName':'unknow'}
         msg = msg % asciify(args)
         # SMTP лог может быть достаточно долгим
-        threads.deferToThread(self.__log.log, kw['level'], asciify(msg), exc_info=exc_info)
+        threads.deferToThread(self.__log.log, kw['level'], asciify(msg), exc_info=exc_info, extra=asciify(extraParams))
 
     def flush(self):
         """
