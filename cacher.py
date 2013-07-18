@@ -28,7 +28,15 @@ class Cacher(object):
         self._db = DB()
 
     def getStations(self, stationName):
-        return
+        u"""Возвращает станции начинающиеся со строки"""
+        self._db.execute('''SELECT * FROM `Stations` WHERE `Name` LIKE %s ORDER BY `S` DESC LIMIT 100''',
+            ("%" + stationName + "%"))
+        return self._db.getFetchAll()
 
     def setStations(self, stations):
-        pass
+        u'''Сохранение станций в кеше'''
+        data = []
+        for station in stations:
+            data.append('("%s","%s","%s","%s")' % (station['c'], station['n'], station['S'], station['L']))
+        self._db.execute('''INSERT IGNORE INTO `Stations` (`Code`, `Name`, `S`, `L`) VALUES %s''' % ','.join(data))
+        self._db.getConnDB().commit()

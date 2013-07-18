@@ -52,7 +52,7 @@ class StationSelector(object, Resource):
         """
         request.setHeader('Content-Type', 'text/plain;charset=utf-8')
         if not isinstance(response, basestring):
-            response = '%s' % response
+            response = str(response)
         self.debug(response)
         request.write(response)
         request.finish()

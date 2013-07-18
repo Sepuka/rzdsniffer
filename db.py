@@ -29,6 +29,24 @@ from ConfigParser import ConfigParser
 config = ConfigParser()
 config.read('./config.ini')
 
+class DBException(Exception):
+    u"""Класс исключений"""
+    def __init__(self, msg, code = 'Error'):
+        self.msg    = msg
+        self.code   = code
+
+    def __str__(self):
+        return self.msg
+
+    def getErrorMessage(self):
+        return self.msg
+
+    def getTraceback(self):
+        return ''
+
+    def raiseException(self):
+        raise self
+
 class DB(object):
     u"""БД"""
 
@@ -42,6 +60,12 @@ class DB(object):
         self._log = Logger()
         self.__connect()
         self.__connection_checker()
+
+    def __del__(self):
+        """Деструктор объекта"""
+        self.__conn['connection'].commit()
+        self.__conn['cursor'].close()
+        self.__conn['connection'].close()
 
     def __connect(self):
         """Соединение с БД"""
@@ -83,14 +107,6 @@ class DB(object):
                 cursor = self.__conn['cursor']
         except (KeyError):
             cursor = self.__conn['cursor']
-        try:
-            # Иногда необходимо передать список параметров вместо кортежа params
-            # см. функцию _getRegisrty() шлюза szkti
-            # В этом случае используем эти параметры
-            # http://stackoverflow.com/questions/4574609/executing-select-where-in-using-mysqldb
-            params = kw['paramList']
-        except (KeyError):
-            pass
         if self.__query > 0:
             t = float('0.%d' % randint(1,9))
             self._log.warning('db busy, sleep %s sec. cursor %s\nquery %s\nparams %s', t, cursor, query, params)
@@ -109,3 +125,18 @@ class DB(object):
         finally:
             self.__query -= 1
         return lastID
+
+    def getConnDB(self):
+        u"""Получение ресурса БД"""
+        return self.__conn['connection']
+
+    def getFetchOne(self):
+        """Получение одиночного результата выборки"""
+        return self.__conn['cursor'].fetchone()
+
+    def getFetchAll(self):
+        return self.__conn['cursor'].fetchall()
+
+    def getRowCount(self):
+        u"""Получение количества строк в кортеже"""
+        return self.__conn['cursor'].rowcount

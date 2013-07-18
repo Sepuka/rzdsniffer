@@ -103,5 +103,6 @@ class RZD(object):
                 if (isinstance(conn, httplib.HTTPConnection)):
                     conn.close()
         else:
-            result = stations
+            self.debug('Ответ взят из кеша')
+            result = sorted(stations, key=lambda k:k[3], reverse=True)[:self.stationsPacket]
         return result
