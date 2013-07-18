@@ -10,7 +10,7 @@ from twisted.web import server
 from twisted.web.resource import Resource
 from twisted.internet import reactor
 from ConfigParser import ConfigParser
-from logger import Logger
+from logger import Logger, asciify
 import rzd
 from functools import partial
 
@@ -53,8 +53,8 @@ class StationSelector(object, Resource):
         request.setHeader('Content-Type', 'text/plain;charset=utf-8')
         if not isinstance(response, basestring):
             response = str(response)
-        self.debug(response)
-        request.write(response)
+        self.debug('-> %s', response)
+        request.write(asciify(response))
         request.finish()
 
     def render_POST(self, request):
@@ -62,7 +62,7 @@ class StationSelector(object, Resource):
         @param request: Запрос клиента
         @type request: twisted.http.request
         """
-        self.info('Запрошен ресурс %s с IP %s', self.__class__.__name__, request.getClientIP())
+        self.info('<- Запрошен ресурс %s с IP %s', self.__class__.__name__, request.getClientIP())
         try:
             station = request.args['station'][0]
         except KeyError:

@@ -31,7 +31,7 @@ class Cacher(object):
         u"""Возвращает станции начинающиеся со строки"""
         self._db.execute('''SELECT * FROM `Stations` WHERE `Name` LIKE %s ORDER BY `S` DESC LIMIT 100''',
             ("%" + stationName + "%"))
-        return self._db.getFetchAll()
+        return self._db.getFetchAll(True)
 
     def setStations(self, stations):
         u'''Сохранение станций в кеше'''

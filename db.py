@@ -67,6 +67,10 @@ class DB(object):
         self.__conn['cursor'].close()
         self.__conn['connection'].close()
 
+    @property
+    def cursor(self):
+        return self.__conn['cursor']
+
     def __connect(self):
         """Соединение с БД"""
         dbSettings = {
@@ -134,8 +138,21 @@ class DB(object):
         """Получение одиночного результата выборки"""
         return self.__conn['cursor'].fetchone()
 
-    def getFetchAll(self):
-        return self.__conn['cursor'].fetchall()
+    def getFetchAll(self, withFieldsName=False):
+        u"""Извлечение всех строк данных
+        Возвращает кортеж, а если передать withFieldsName=True, то список словарей
+        """
+        if withFieldsName == True:
+            answer = []
+            fields = [i[0] for i in self.cursor.description]
+            for station in self.cursor.fetchall():
+                dict = {}
+                for (cnt, el) in enumerate(station):
+                    dict[fields[cnt]] = el
+                answer.append(dict)
+            return answer
+        else:
+            return self.cursor.fetchall()
 
     def getRowCount(self):
         u"""Получение количества строк в кортеже"""

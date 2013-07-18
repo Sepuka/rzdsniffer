@@ -97,12 +97,12 @@ class RZD(object):
                     else:
                         #TODO: можно распараллелить запись в кеш
                         self._cache.setStations(stations)
-                        # Сортируем словарь по полю L
-                        result = sorted(stations, key=lambda k:k['L'], reverse=True)[:self.stationsPacket]
             finally:
                 if (isinstance(conn, httplib.HTTPConnection)):
                     conn.close()
         else:
             self.debug('Ответ взят из кеша')
-            result = sorted(stations, key=lambda k:k[3], reverse=True)[:self.stationsPacket]
-        return result
+
+        # Сортируем словарь по полю L
+        result = sorted(stations, key=lambda k:k['L'], reverse=True)[:self.stationsPacket]
+        return json.dumps(result, ensure_ascii=False)
