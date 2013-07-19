@@ -62,7 +62,7 @@ class StationSelector(object, Resource):
         @param request: Запрос клиента
         @type request: twisted.http.request
         """
-        self.info('<- Запрошен ресурс %s с IP %s', self.__class__.__name__, request.getClientIP())
+        self.info('<- Запрошен ресурс с IP %s', request.getClientIP())
         try:
             station = request.args['station'][0]
         except KeyError:
@@ -77,10 +77,31 @@ class StationSelector(object, Resource):
                 self._output(stations, request)
         return server.NOT_DONE_YET
 
+class Searcher(StationSelector):
+
+    def render_POST(self, request):
+        u"""Обработка запроса на поиск билетов
+        @param request: Запрос клиента
+        @type request: twisted.http.request
+        """
+        self.info('<- Запрошен ресурс с IP %s', request.getClientIP())
+        try:
+            src = request.args['src'][0]
+            dst = request.args['dst'][0]
+            date = request.args['date'][0]
+        except KeyError, ex:
+            request.setResponseCode(400)
+            self._output('expected some parameter: %s' % ex, request)
+            return server.NOT_DONE_YET
+        else:
+            self._output('answer', request)
+        return server.NOT_DONE_YET
+
 resource = Resource()
 try:
     # Любой ресурс может не завестись
     resource.putChild('station', StationSelector())
+    resource.putChild('search', Searcher())
 except Exception, ex:
     print ex
 else:
