@@ -11,8 +11,11 @@ from twisted.web.resource import Resource
 from twisted.internet import reactor
 from ConfigParser import ConfigParser
 from logger import Logger, asciify
+from db import DB
 import rzd
 from functools import partial
+from urllib import urlencode
+from datetime import datetime
 
 config = ConfigParser()
 config.read('./config.ini')
@@ -79,12 +82,53 @@ class StationSelector(object, Resource):
 
 class Searcher(StationSelector):
 
+    _db     = None
+
+    def __init__(self):
+        self._db = DB()
+        super(Searcher, self).__init__()
+
+    def _buildRequest(self, src, dst, date):
+        self._db.execute('''SELECT `Name` FROM `Stations` WHERE `Code`=%s''', int(src))
+        if self._db.getRowCount():
+            srcName = self._db.getFetchOne()
+        else:
+            self.error('Source station not found "%s"', src)
+            return None
+        self._db.execute('''SELECT `Name` FROM `Stations` WHERE `Code`=%s''', int(dst))
+        if self._db.getRowCount():
+            dstName = self._db.getFetchOne()
+        else:
+            self.error('Destionation station not found "%s"', dst)
+            return None
+        try:
+            date = datetime.strptime(date, '%Y-%m-%d').strftime('%d.%m.%Y')
+        except ValueError:
+            self.error('Wrong format date "%s"', date)
+            return None
+        params = {
+            'STRUCTURE_ID': 735,
+            'layer_id': 5371,
+            'dir': 0,
+            'tfl': 3,
+            'checkSeats': 1,
+            'st0': srcName,
+            'code0': src,
+            'dt0': date,
+            'st1': dstName,
+            'code1': dst,
+            'dt1': date,
+            'SESSION_ID': 1
+        }
+        return urlencode(params)
+
     def render_POST(self, request):
         u"""Обработка запроса на поиск билетов
         @param request: Запрос клиента
         @type request: twisted.http.request
         """
         self.info('<- Запрошен ресурс с IP %s', request.getClientIP())
+        answer = ''
         try:
             src = request.args['src'][0]
             dst = request.args['dst'][0]
@@ -94,7 +138,12 @@ class Searcher(StationSelector):
             self._output('expected some parameter: %s' % ex, request)
             return server.NOT_DONE_YET
         else:
-            self._output('answer', request)
+            req = self._buildRequest(src, dst, date)
+            if req is None:
+                answer = 'bad request'
+            else:
+                self.debug('Собран запрос "%s"', req)
+            self._output(answer, request)
         return server.NOT_DONE_YET
 
 resource = Resource()

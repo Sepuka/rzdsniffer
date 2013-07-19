@@ -136,7 +136,7 @@ class DB(object):
 
     def getFetchOne(self):
         """Получение одиночного результата выборки"""
-        return self.__conn['cursor'].fetchone()
+        return self.cursor.fetchone()
 
     def getFetchAll(self, withFieldsName=False):
         u"""Извлечение всех строк данных
@@ -156,4 +156,4 @@ class DB(object):
 
     def getRowCount(self):
         u"""Получение количества строк в кортеже"""
-        return self.__conn['cursor'].rowcount
+        return self.cursor.rowcount
