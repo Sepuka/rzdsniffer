@@ -28,8 +28,33 @@ CREATE TABLE `Stations` (
   `L` int(11) DEFAULT NULL,
   `S` int(11) DEFAULT NULL,
   PRIMARY KEY (`Code`),
-  KEY `Name` (`Name`(5))
+  KEY `Name` (`Name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `Tasks`
+--
+
+DROP TABLE IF EXISTS `Tasks`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `Tasks` (
+  `Id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `Phone` char(10) DEFAULT NULL,
+  `Src` bigint(20) DEFAULT NULL,
+  `Dst` bigint(20) DEFAULT NULL,
+  `Date` date DEFAULT NULL,
+  `Type` int(11) DEFAULT NULL,
+  `DateTimeCreate` datetime DEFAULT NULL,
+  `DateTimeCheck` datetime DEFAULT NULL,
+  `Complete` tinyint(4) DEFAULT '0',
+  PRIMARY KEY (`Id`),
+  KEY `Src` (`Src`),
+  KEY `Dst` (`Dst`),
+  CONSTRAINT `Tasks_ibfk_1` FOREIGN KEY (`Src`) REFERENCES `Stations` (`Code`),
+  CONSTRAINT `Tasks_ibfk_2` FOREIGN KEY (`Dst`) REFERENCES `Stations` (`Code`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -41,4 +66,4 @@ CREATE TABLE `Stations` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2013-07-18 16:26:45
+-- Dump completed on 2013-07-19 13:22:39
