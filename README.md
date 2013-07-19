@@ -12,5 +12,5 @@
  wget --post-data 'station=ста' http://127.0.0.1:8077/station
 Запрос на поиск станции назначения
  wget --post-data 'station=ста' http://127.0.0.1:8077/station
-Запрос на поиск билетов
- wget --post-data 'src=1111&dst=222&date=2013-07-18' http://127.0.0.1:8077/search
+Запрос на добавление новой задачи
+wget --post-data 'src=2500110&dst=10040893&date=2013-07-18&phone=9312375828&type=1' http://127.0.0.1:8077/tasker

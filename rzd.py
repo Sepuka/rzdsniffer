@@ -15,6 +15,19 @@ from cacher import Cacher
 from twisted.web import client as twc
 from functools import partial
 
+# Плацкарт
+RESERVED_SEAT   = 1
+# Общий
+COMMON_CAR      = 2
+# Сидячий
+SEDENTARY_CAR   = 3
+# Купе
+STATEROOM       = 4
+# Мягкий
+SOFT_CAR        = 5
+# Люкс
+LUXURY_CAE      = 6
+
 class RZD(object):
 
     # Логи
