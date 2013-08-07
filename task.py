@@ -7,8 +7,7 @@ __date__ ="$19.07.2013 12:40:35$"
 from logger import Logger
 from db import DB
 from ConfigParser import ConfigParser
-from urllib import urlencode
-from datetime import datetime
+from rzd import RZD
 from functools import partial
 
 IN_PROGRESS = 0
@@ -25,12 +24,15 @@ class Task(object):
     _db             = None
     # Логи
     _log            = None
+    # РЖД модуль
+    _rzd            = None
     # Словарь имен вызванных логов для partial
     _logNamesPart   = {}
 
     def __init__(self):
         self._log = Logger()
         self._db = DB()
+        self._rzd = RZD()
 
     def __getattr__(self, name):
         try:
@@ -45,40 +47,6 @@ class Task(object):
                 self._log.error('Попытка вызова несуществующего типа лога "%s"',
                     name, moduleName=self.__class__.__name__)
 
-    def _buildRequest(self, src, dst, date):
-        self._db.execute('''SELECT `Name` FROM `Stations` WHERE `Code`=%s''', int(src))
-        if self._db.getRowCount():
-            srcName = self._db.getFetchOne()
-        else:
-            self.error('Source station not found "%s"', src)
-            return None
-        self._db.execute('''SELECT `Name` FROM `Stations` WHERE `Code`=%s''', int(dst))
-        if self._db.getRowCount():
-            dstName = self._db.getFetchOne()
-        else:
-            self.error('Destionation station not found "%s"', dst)
-            return None
-        try:
-            date = datetime.strptime(date, '%Y-%m-%d').strftime('%d.%m.%Y')
-        except ValueError:
-            self.error('Wrong format date "%s"', date)
-            return None
-        params = {
-            'STRUCTURE_ID': 735,
-            'layer_id': 5371,
-            'dir': 0,
-            'tfl': 3,
-            'checkSeats': 1,
-            'st0': srcName,
-            'code0': src,
-            'dt0': date,
-            'st1': dstName,
-            'code1': dst,
-            'dt1': date,
-            'SESSION_ID': 1
-        }
-        return urlencode(params)
-
     def cnt(self):
         u'''
         Получение количества активных заданий в системе
@@ -92,6 +60,7 @@ class Task(object):
         u'''Добавление нового задания в очередь'''
         limit = config.getint('system', 'taskLimit')
         if limit > self.cnt():
+            self._rzd.getTrains(src, dst, date)
             self._db.execute('''INSERT INTO `Tasks` SET `Phone`=%s, `Src`=%s,
                 `Dst`=%s, `Date`=%s, `Type`=%s, `DateTimeCreate`=NOW(), `DateTimeCheck`=null, `Complete`=0''',
                 phone, int(src), int(dst), date, type)
