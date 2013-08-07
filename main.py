@@ -79,7 +79,7 @@ class StationSelector(object, Resource):
         return server.NOT_DONE_YET
 
 class Tasker(StationSelector):
-
+    u"""Позволяет добавить новое задание"""
     _task   = None
 
     def __init__(self):
@@ -104,7 +104,10 @@ class Tasker(StationSelector):
             self._output('expected some parameter: %s' % ex, request)
             return server.NOT_DONE_YET
         else:
-            self._task.add(src, dst, date, phone, type)
+            try:
+                self._task.add(src, dst, date, phone, type)
+            except Exception, ex:
+                answer = ex
             self._output(answer, request)
         return server.NOT_DONE_YET
 
