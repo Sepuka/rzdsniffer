@@ -34,6 +34,7 @@ LUXURY_CAE      = 6
 
 class RZD(object):
 
+    _instance       = None
     # Логи
     _log            = None
     _db             = None
@@ -41,14 +42,26 @@ class RZD(object):
     _cache          = None
     # Словарь имен вызванных логов для partial
     _logNamesPart   = {}
+    # Куки для сайта
+    _cookie         = None
 
     # Количество станций выдаваемых клиенту
     stationsPacket  = 10
 
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(RZD, cls).__new__(cls, *args, **kwargs)
+        return cls._instance
+
     def __init__(self):
-        self._log = Logger()
-        self._cache = Cacher()
-        self._db = DB()
+        if not self._log:
+            self._log = Logger()
+        if not self._cache:
+            self._cache = Cacher()
+        if not self._db:
+            self._db = DB()
+        if not self._cookie:
+            self._setCookie()
 
     def __getattr__(self, name):
         try:
@@ -145,6 +158,34 @@ class RZD(object):
         result = sorted(stations, key=lambda k:k['L'], reverse=True)[:self.stationsPacket]
         return json.dumps(result, ensure_ascii=False)
 
+    def _setCookie(self):
+        u'''
+        Сохранение куков
+        Задача метода состоит в получении сессии, а конкретно параметра JSESSIONID
+        '''
+        self._cookie = ''
+        addr = 'http://pass.rzd.ru/timetable/public/ru?STRUCTURE_ID=735&layer_id=5354&refererVpId=1&refererPageId=704&refererLayerId=4065#dir=0|tfl=3|checkSeats=1|st0=%D0%A1%D0%90%D0%9D%D0%9A%D0%A2-%D0%9F%D0%95%D0%A2%D0%95%D0%A0%D0%91%D0%A3%D0%A0%D0%93|code0=2004000|dt0=20.08.2013|st1=%D0%9A%D0%A3%D0%A0%D0%A1%D0%9A|code1=2000150|dt1=20.08.2013'
+        scheme, host, port, path = twc._parse(addr)
+        try:
+            conn = httplib.HTTPConnection(host)
+            headers = {'User-Agent': useragent.getRandomUserAgent()}
+            self.debug('Получение cookies')
+            conn.request('GET', path, None, headers)
+        except Exception, ex:
+            from traceback import extract_tb, format_list
+            error = '%s:\ntrace:\n%s' % (ex, '\n'.join(format_list(extract_tb(sys.exc_info()[2]))))
+            self.critical('Failed trains retrieve: %s',
+                error)
+            raise ex
+        else:
+            response = conn.getresponse()
+            cookie = [i[1] for i in response.getheaders() if i[0] == "set-cookie"][0]
+            for i in cookie.split(';'):
+                posSession = i.find('JSESSIONID')
+                if posSession != -1:
+                    self._cookie = self._cookie + i[posSession:]
+            self.debug('Cookie: %s', self._cookie)
+
     def _getTrainsRequest(self, req):
         u'''
         Отправка запроса в РЖД
@@ -156,7 +197,7 @@ class RZD(object):
             conn = httplib.HTTPConnection(host)
             headers = {'User-Agent': useragent.getRandomUserAgent(),
                     'Accept': '*/*', 'X-Requested-With': 'XMLHttpRequest',
-                    'Cookie': '''_POSTED_BALLOT_ID=981; LtpaToken2=/M7wkUeaHRHGGj0q9mq9ORUfGY7rvp+Izd31zhR1E0Xi216h42Jq/thD/H7/vCmOC3QTG3kdCfiwDS7vhVo9c/W6XKyPWvm+rU1r8uGe7Q9SbrzI44chAuWGuTbMuxEkQQk28MUNz7obBztyGrl5oacOkQR9nrW4SCp47duSyXN33BqwDAfGkw8qxFi2VSmU6fhrwfn/2EoEIiSQPtAFJ9WUfX1r+3Yz5evU9CzpV/uHFjplJfjPQeSbky/+sqh2JRvqRlqZ3+YeSHWQChvL73/RybpmvRwclvt9dk9tSMKOoJePE2O8b+1JibJZW8PCha5i4zV3FQ9E4CkShgsSKsd/9jMQS6BC21p2ANIE2N+T2ieIg0qEdt5eNnOHBHo9oLawp5JOYqV5Ekq6jOr1+r+u8Vd+uo+i53vE08rrxELLBB6SRGcR0MAmURU/4LXRFb7J7PxVRsvsh4O25Z9zelTDWNmtTAnaN2ZBnbhbpwqi9/xnP1licCBiKi+TT5AyCCzbULj6S7VyZ5mXoPbUGnUTLi9Bt6I+N4CpTNZekvFwlFEhulvaRGkkI11KL6XAUqcetQiWtLUyAZaOa4xEqht+GZSnNuvFXMhy3XyWQby/1q9RNOmMblzqN4DKI8KN; __utma=10532855.1297015581.1375874990.1375874990.1375878680.2; __utmc=10532855; __utmz=10532855.1375874990.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none); __utma=53259433.1315264599.1375875002.1375875002.1375878916.2; __utmc=53259433; __utmz=53259433.1375878916.2.2.utmcsr=rzd.ru|utmccn=(referral)|utmcmd=referral|utmcct=/; JSESSIONID=0000m0wmF2CAM2dsUb3ZzU1NYim:17obq94ai; lang=ru'''}
+                    'Cookie': self._cookie}
             self.debug('Отправка запроса на %s', req)
             conn.request('GET', req, None, headers)
         except Exception, ex:
@@ -191,6 +232,10 @@ class RZD(object):
         try:
             trains = json.loads(answer, 'utf-8')
             self.debug(str(trains))
+            if trains.has_key('result') and trains['result'] == 'Error':
+                self.warning('Запрос не удался: %s', trains['message'])
+                if trains.has_key('sessExpired') and trains['sessExpired'] == 1:
+                    self.debug('Получен признак истекшей сессии')
             # Первый запрос даст нам параметр rid
             try:
                 req += '&rid=%s' % trains['rid']
