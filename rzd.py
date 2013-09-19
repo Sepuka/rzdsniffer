@@ -16,7 +16,7 @@ import httplib
 import json
 from twisted.web import client as twc
 from functools import partial
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib import urlencode
 
 # Плацкарт
@@ -91,7 +91,9 @@ class RZD(object):
             self.error('Destionation station not found "%s"', dst)
             return None
         try:
-            date = datetime.strptime(date, '%Y-%m-%d').strftime('%d.%m.%Y')
+            date0 = datetime.strptime(date, '%Y-%m-%d').strftime('%d.%m.%Y')
+            nextDay = datetime.strptime(date, '%Y-%m-%d') + timedelta(days=1)
+            date1 = nextDay.strftime('%d.%m.%Y')
         except ValueError:
             self.error('Wrong format date "%s"', date)
             return None
@@ -103,10 +105,10 @@ class RZD(object):
             'checkSeats': 1,
             'st0': srcName,
             'code0': src,
-            'dt0': date,
+            'dt0': date0,
             'st1': dstName,
             'code1': dst,
-            'dt1': date,
+            'dt1': date1,
             'SESSION_ID': 1
         }
         return urlencode(params)
